@@ -4,3 +4,4 @@ pandas
 datetime
 scipy
 yfinance
+gunicorn
