@@ -227,9 +227,9 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     open_prices, close_prices, min_prices, max_prices, volumes = get_minute_stock_data(ticker_list_id, time_duration)
     price = close_prices
     if check_list_id != None and "FullTimePeriod" in check_list_id:
-        op, cl, mx, mn = get_open_close_min_max_yesterday(price[0:-390])
+        op, cl, mx, mn = get_open_close_min_max_yesterday(price[0:(time_duration-1) * 390])
     else: 
-        op, cl, mx, mn = get_open_close_min_max_yesterday(price[-780:-390])
+        op, cl, mx, mn = get_open_close_min_max_yesterday(price[(time_duration-2) * 390:(time_duration-1) * 390])
     # ------- FIGURE 1111111111111111111111111111111111111111111111111111111111111111111111
     price30 = apply_gaussian_filter(price, 30, "nearest")
     price100 = apply_gaussian_filter(price, 100, "nearest")
