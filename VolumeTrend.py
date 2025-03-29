@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[11]:
-
-
 from dash import Dash, html, dcc, callback, Output, Input
 import pandas as pd
 import plotly.express as px
@@ -19,42 +13,17 @@ import datetime
 import yfinance as yf
 
 
-# In[707]:
-
-
 def get_minute_stock_data(ticker, time_duration):
     days = str(time_duration) + "d"
     stock_data = yf.download(ticker, period=days, interval='1m')
-    
-    open_prices = stock_data['Open'][ticker].tolist()
-    close_prices = stock_data['Close'][ticker].tolist()
-    min_prices = stock_data['Low'][ticker].tolist()
-    max_prices = stock_data['High'][ticker].tolist()
-    volumes = stock_data['Volume'][ticker].tolist()
 
-    return open_prices, close_prices, min_prices, max_prices, volumes
+    return stock_data
 
-def get_30min_stock_data(ticker):
-    stock_data = yf.download(ticker, period='30d', interval='30m')
-    
-    open_prices = stock_data['Open'][ticker].tolist()
-    close_prices = stock_data['Close'][ticker].tolist()
-    min_prices = stock_data['Low'][ticker].tolist()
-    max_prices = stock_data['High'][ticker].tolist()
-    volumes = stock_data['Volume'][ticker].tolist()
-    
-    return open_prices, close_prices, min_prices, max_prices, volumes
+def get_daily_stock_data(ticker, time_duration):
+    days = str(time_duration) + "y"
+    stock_data = yf.download(ticker, period=days, interval='1d')
 
-def get_daily_stock_data(ticker):
-    stock_data = yf.download(ticker, period='30d', interval='1d')
-    
-    open_prices = stock_data['Open'][ticker].tolist()
-    close_prices = stock_data['Close'][ticker].tolist()
-    min_prices = stock_data['Low'][ticker].tolist()
-    max_prices = stock_data['High'][ticker].tolist()
-    volumes = stock_data['Volume'][ticker].tolist()
-    
-    return open_prices, close_prices, min_prices, max_prices, volumes
+    return stock_data
 
 def find_peaks_and_valleys (data, sigma):
     filtered_data = apply_gaussian_filter(data, sigma, "nearest")
@@ -147,8 +116,6 @@ def percent_difference_from_first_value_in_list(data):
 
     data[0] = 0
 
-    tickvals =  [0, 390, 780, 1170, 1560, 1950, 1980, 2040, 2100, 2160], 
-    ticktext = ["D1", "D2", "D3", "D4", "D5", "D6", "10", "11", "12", "13"], 
 def get_tick_data(time_duration):
     custom_tick_vals = []
     custom_tick_text = []
@@ -162,19 +129,14 @@ def get_tick_data(time_duration):
 
     return custom_tick_text, custom_tick_vals
 
-def get_open_close_min_max_yesterday (data):
+def get_open_close_min_max (data):
     return data[0], data[-1], max(data), min(data)
     
 
-
-# In[721]:
-
-
 list_of_tickers = ["QQQ", "SPY", "RIVN", "HUT", "SMCI", "GOOG", "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", 
-                   "QBTS", "SOXL", "TNA", "IBIT", "HIMS", "PINS", "RDDT", "ELF", "FUBO", "ROKU", "CVNA"]
+                   "META", "MSFT", "QBTS", "SOXL", "TNA", "IBIT", "HIMS", "PINS", "RDDT", "ELF", "FUBO", "ROKU", "CVNA", "BABA", "BTC-USD", "ETH-USD"]
 
 app = Dash()
-server = app.server
 app.layout = html.Div([
     html.H1('Stock Analysis Board', style={'textAlign': 'center', 'color': '#2c3e50', 'margin-bottom': '30px'}),
     
@@ -195,22 +157,24 @@ app.layout = html.Div([
             html.Button('Refresh Graph', id='refresh-button-id', style={"width": "100%", "height":"20px", "color":"green"})
         ], style={'width': '50%', 'padding': '20px', 'background-color': '#f8f9fa', 'border-radius': '10px', 'margin-right': '20px'}),
     ], style={'display': 'flex', 'margin': '20px'}),
-        
+
     html.Div([
-        dcc.Graph(id='graph-1-id', style={'padding': '1px', 'margin':'1px'}),            
-        dcc.Graph(id='graph-2-id', style={'padding': '1px', 'margin':'1px'}),
-        dcc.Graph(id='graph-3-id', style={'padding': '1px', 'margin':'1px'})
-    ], style={'width':'100%', 'padding': '1px', 'margin':'1px', 'gap': '2px'})
+        dcc.Graph(id='graph-mini1-id', style={'padding': '0px', 'margin':'0px'}),            
+        dcc.Graph(id='graph-mini2-id', style={'padding': '0px', 'margin':'0px'}),
+    ], style={'display': 'flex', 'width':'100%'}),
+    
+    html.Div([
+        dcc.Graph(id='graph-1-id', style={'padding': '0px', 'margin':'0px'}),            
+        dcc.Graph(id='graph-2-id', style={'padding': '0px', 'margin':'0px'}),
+        dcc.Graph(id='graph-3-id', style={'padding': '0px', 'margin':'0px'})
+    ], style={'width':'100%', 'padding': '0px', 'margin':'0px', 'gap': '0px'})
 
-], style={'padding': '5px'})
-# Add code to set the window size for moving average for the Graph 4
-
-
-# In[723]:
-
+], style={'padding': '0px'})
 
 @callback(
-    [Output('graph-1-id', 'figure'),
+    [Output('graph-mini1-id', 'figure'),
+     Output('graph-mini2-id', 'figure'),
+     Output('graph-1-id', 'figure'),
      Output('graph-2-id', 'figure'),
      Output('graph-3-id', 'figure')],
     [Input('ticker-list-id', 'value'),
@@ -223,28 +187,45 @@ app.layout = html.Div([
 def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3, mov_av_graph3_id, refresh_button_id):
     graph_width = 1500
     custom_tick_text, custom_tick_vals = get_tick_data(time_duration)
+
+    stock_data = get_daily_stock_data(ticker_list_id, 1) # Downloading data of last 12 months for min fig 1, 2, 3
+    fig1mini = go.Figure()
+    fig1mini.add_trace(go.Scatter(x = stock_data.index, y=stock_data['Close'][ticker_list_id], mode='lines', name='Year', line=dict(color='rgb(101, 110, 242)')))
+    fig1mini.add_trace(go.Bar(x = stock_data.index, y=stock_data['Volume'][ticker_list_id], name='Price', yaxis='y2', marker_color='rgba(242, 110, 10, 0.3)'))
+    fig1mini.update_layout(xaxis_title='Year', width=750, height=300, showlegend=False, template='plotly',
+                          yaxis=dict(title='Price'), yaxis2=dict(title='Volume', overlaying='y', side='right'))
     
-    open_prices, close_prices, min_prices, max_prices, volumes = get_minute_stock_data(ticker_list_id, time_duration)
-    price = close_prices
-    if check_list_id != None and "FullTimePeriod" in check_list_id:
-        op, cl, mx, mn = get_open_close_min_max_yesterday(price[0:(time_duration-1) * 390])
-    else: 
-        op, cl, mx, mn = get_open_close_min_max_yesterday(price[(time_duration-2) * 390:(time_duration-1) * 390])
+    fig2mini = go.Figure()
+    days = 60
+    fig2mini.add_trace(go.Scatter(x = stock_data.tail(days).index, y=stock_data.tail(days)['Close'][ticker_list_id], mode='lines', name='Month', line=dict(color='rgb(101, 110, 242)')))
+    fig2mini.add_trace(go.Bar(x = stock_data.tail(days).index, y=stock_data.tail(days)['Volume'][ticker_list_id], name='Price', yaxis='y2', marker_color='rgba(242, 110, 10, 0.3)'))
+    fig2mini.update_layout(xaxis_title='Month', width=750, height=300, showlegend=False, template='plotly',
+                           yaxis=dict(title='Price'), yaxis2=dict(title='Volume', overlaying='y', side='right'))
+    
+
+    stock_data = get_minute_stock_data(ticker_list_id, time_duration) # Downloading data for fig 1, 2
+    price = stock_data["Close"][ticker_list_id].tolist()
+    x = [i for i in range(len(price))] # range for x-axis for all the three main graphs
+    
     # ------- FIGURE 1111111111111111111111111111111111111111111111111111111111111111111111
+    if check_list_id != None and "FullTimePeriod" in check_list_id:
+        op, cl, mx, mn = get_open_close_min_max(price[:(time_duration-1) * 390])
+    else: # yesterday's
+        op, cl, mx, mn = get_open_close_min_max(price[(time_duration-2) * 390:(time_duration-1) * 390])
+        
     price30 = apply_gaussian_filter(price, 30, "nearest")
     price100 = apply_gaussian_filter(price, 100, "nearest")
     price200 = apply_gaussian_filter(price, 200, "nearest")
     
     fig1 = go.Figure()
-    x = [i for i in range(len(price))]
     #fig1.add_trace(go.Candlestick(x=x, open=open_prices, high=max_prices, low=min_prices, close=close_prices, increasing_line_color= 'rgba(10, 200, 10, 0.5)', decreasing_line_color= 'rgba(200, 10, 10, 0.5)', name = ticker_list_id))
-    fig1.add_hline(y = mx, line_width=3, line_dash="dash", line_color="blue")
-    fig1.add_hline(y = mn, line_width=3, line_dash="dash", line_color="blue")
-    fig1.add_hline(y = cl, line_width=3, line_dash="dash", line_color="orange")
     fig1.add_trace(go.Scatter(x = x, y=price, mode='lines', name='Price', line=dict(color='rgba(101, 110, 242, 0.5)')))
     fig1.add_trace(go.Scatter(x = x, y=price30[:-30], mode='lines', name='Gaussian 30',  line=dict(color='red')))
     fig1.add_trace(go.Scatter(x = x, y=price100[:-100], mode='lines', name='Gaussian 100', line=dict(color='light green')))
     fig1.add_trace(go.Scatter(x = x, y=price200[:-200], mode='lines', name='Gaussian 200', line=dict(color='black')))
+    fig1.add_hline(y = cl, line_width=3, line_color="orange")
+    fig1.add_hline(y = mx, line_width=3, line_dash="dash", line_color="blue")
+    fig1.add_hline(y = mn, line_width=3, line_dash="dash", line_color="blue")
     
     fig1.update_layout(title = ticker_list_id, xaxis_title='Time', yaxis_title='Price', legend_title='Gaussian Trend', width=graph_width+10, height=550, 
         xaxis_rangeslider_visible=False, template='plotly', xaxis=dict(
@@ -254,7 +235,6 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     # ------- FIGURE 22222222222222222222222222222222222222222222222222222222222222222222
     
     fig2 = go.Figure()
-    x = [i for i in range(len(price))]
     if check_list_id != None and "ROC15" in check_list_id:
         second_diff15 = second_order_difference(moving_average_end_at_current(price, 15), 15)
         fig2.add_trace(go.Scatter(x = x, y=second_diff15, mode='lines', name='15 minutes', line=dict(color='orange')))
@@ -277,36 +257,31 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     if isinstance(ticker_list_id_3, str):
         ticker_list_id_3 = [ticker_list_id_3]
 
-    x = [i for i in range(len(price))]
     if ticker_list_id_3 != None:
         for ticker in ticker_list_id_3:
-            open_prices_1, close_prices_1, min_prices_1, max_prices_1, volumes_1 = get_minute_stock_data(ticker, time_duration)
-            close_prices_1 = moving_average_end_at_current(close_prices_1, mov_av_graph3_id)
-            percent_difference_from_first_value_in_list(close_prices_1)
-            fig3.add_trace(go.Scatter(x = x, y=close_prices_1, mode='lines', name=ticker))
+            stock_data = get_minute_stock_data(ticker, time_duration)
+            price = stock_data["Close"][ticker].tolist()
+            price = moving_average_end_at_current(price, mov_av_graph3_id)
+            percent_difference_from_first_value_in_list(price)
+            fig3.add_trace(go.Scatter(x = x, y=price, mode='lines', name=ticker))
         
         fig3.update_layout( xaxis_title='Time', yaxis_title='Price', legend_title='Multiple Tickers', template='plotly', width=graph_width, height=500, 
             xaxis=dict(
                 tickvals = custom_tick_vals,
                 ticktext = custom_tick_text,
                 tickangle=-90 ))
-    return fig1, fig2, fig3
-
-
-# In[725]:
-
+    return fig1mini, fig2mini, fig1, fig2, fig3
+    
 
 if __name__ == '__main__':
-    app.run(debug=True)
-
-
-# In[ ]:
+    app.run()
 
 
 
 
 
-# In[ ]:
+
+
 
 
 
