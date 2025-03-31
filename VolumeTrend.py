@@ -1,11 +1,5 @@
 #server = app.server
 
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 from dash import Dash, html, dcc, callback, Output, Input
 import pandas as pd
 import plotly.express as px
@@ -145,13 +139,13 @@ def get_open_close_min_max (data):
     
 
 
-# In[11]:
-
 
 list_of_tickers = ["^IXIC", "QQQ", "SPY", "RIVN", "HUT", "SMCI", "GOOG", "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", 
                    "META", "MSFT", "QBTS", "SOXL", "TNA", "IBIT", "HIMS", "PINS", "RDDT", "ELF", "FUBO", "ROKU", "CVNA", "BABA", "BTC-USD", "ETH-USD"]
 
 app = Dash()
+server = app.server
+
 app.layout = html.Div([
     html.H1('Stock Analysis Board', style={'textAlign': 'center', 'color': '#2c3e50', 'margin-bottom': '30px'}),
     
