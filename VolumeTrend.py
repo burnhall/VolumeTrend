@@ -1,3 +1,11 @@
+#server = app.server
+
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
 from dash import Dash, html, dcc, callback, Output, Input
 import pandas as pd
 import plotly.express as px
@@ -11,6 +19,9 @@ from scipy.signal import find_peaks
 import datetime
 
 import yfinance as yf
+
+
+# In[2]:
 
 
 def get_minute_stock_data(ticker, time_duration):
@@ -133,11 +144,14 @@ def get_open_close_min_max (data):
     return data[0], data[-1], max(data), min(data)
     
 
-list_of_tickers = ["QQQ", "SPY", "RIVN", "HUT", "SMCI", "GOOG", "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", 
+
+# In[11]:
+
+
+list_of_tickers = ["^IXIC", "QQQ", "SPY", "RIVN", "HUT", "SMCI", "GOOG", "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", 
                    "META", "MSFT", "QBTS", "SOXL", "TNA", "IBIT", "HIMS", "PINS", "RDDT", "ELF", "FUBO", "ROKU", "CVNA", "BABA", "BTC-USD", "ETH-USD"]
 
 app = Dash()
-server = app.server
 app.layout = html.Div([
     html.H1('Stock Analysis Board', style={'textAlign': 'center', 'color': '#2c3e50', 'margin-bottom': '30px'}),
     
@@ -172,6 +186,10 @@ app.layout = html.Div([
 
 ], style={'padding': '0px'})
 
+
+# In[13]:
+
+
 @callback(
     [Output('graph-mini1-id', 'figure'),
      Output('graph-mini2-id', 'figure'),
@@ -192,16 +210,22 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     stock_data = get_daily_stock_data(ticker_list_id, 1) # Downloading data of last 12 months for min fig 1, 2, 3
     fig1mini = go.Figure()
     fig1mini.add_trace(go.Scatter(x = stock_data.index, y=stock_data['Close'][ticker_list_id], mode='lines', name='Year', line=dict(color='rgb(101, 110, 242)')))
+    fig1mini.add_trace(go.Scatter(x = stock_data.index, y=stock_data['Close'][ticker_list_id].rolling(window=50).mean(), mode='lines', name='Year', line=dict(color='red')))
     fig1mini.add_trace(go.Bar(x = stock_data.index, y=stock_data['Volume'][ticker_list_id], name='Price', yaxis='y2', marker_color='rgba(242, 110, 10, 0.3)'))
-    fig1mini.update_layout(xaxis_title='Year', width=750, height=300, showlegend=False, template='plotly',
-                          yaxis=dict(title='Price'), yaxis2=dict(title='Volume', overlaying='y', side='right'))
+    fig1mini.update_layout(xaxis_title='Year (50 MA)', width=750, height=300, showlegend=False, template='plotly', spikedistance=-1,
+                           xaxis=dict(showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1  ),
+                           yaxis=dict(title='Price', showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1), 
+                           yaxis2=dict(title='Volume', overlaying='y', side='right'))
     
     fig2mini = go.Figure()
     days = 60
     fig2mini.add_trace(go.Scatter(x = stock_data.tail(days).index, y=stock_data.tail(days)['Close'][ticker_list_id], mode='lines', name='Month', line=dict(color='rgb(101, 110, 242)')))
+    fig2mini.add_trace(go.Scatter(x = stock_data.tail(days).index, y=stock_data.tail(days)['Close'][ticker_list_id].rolling(window=20).mean(), mode='lines', name='Year', line=dict(color='red')))
     fig2mini.add_trace(go.Bar(x = stock_data.tail(days).index, y=stock_data.tail(days)['Volume'][ticker_list_id], name='Price', yaxis='y2', marker_color='rgba(242, 110, 10, 0.3)'))
-    fig2mini.update_layout(xaxis_title='Month', width=750, height=300, showlegend=False, template='plotly',
-                           yaxis=dict(title='Price'), yaxis2=dict(title='Volume', overlaying='y', side='right'))
+    fig2mini.update_layout(xaxis_title='Month (20 MA)', width=750, height=300, showlegend=False, template='plotly', spikedistance=-1, 
+                           xaxis=dict(showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1  ),
+                           yaxis=dict(title='Price', showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1), 
+                           yaxis2=dict(title='Volume', overlaying='y', side='right'))
     
 
     stock_data = get_minute_stock_data(ticker_list_id, time_duration) # Downloading data for fig 1, 2
@@ -229,10 +253,9 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     fig1.add_hline(y = mn, line_width=3, line_dash="dash", line_color="blue")
     
     fig1.update_layout(title = ticker_list_id, xaxis_title='Time', yaxis_title='Price', legend_title='Gaussian Trend', width=graph_width+10, height=550, 
-        xaxis_rangeslider_visible=False, template='plotly', xaxis=dict(
-            tickvals = custom_tick_vals, 
-            ticktext = custom_tick_text, 
-            tickangle=-90 ))
+                        xaxis_rangeslider_visible=False, template='plotly', spikedistance=-1, 
+                        xaxis=dict(tickvals = custom_tick_vals, ticktext = custom_tick_text, tickangle=-90, showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1  ),
+                        yaxis=dict(showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1))
     # ------- FIGURE 22222222222222222222222222222222222222222222222222222222222222222222
     
     fig2 = go.Figure()
@@ -247,12 +270,9 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     fig2.add_trace(go.Scatter(x = x, y=second_diff120, mode='lines', name='2 hours', line=dict(color='black')))
     fig2.add_hline(y = 0, line_width=3, line_color="rgba(101, 110, 242, 0.5)")
     
-    fig2.update_layout( title = ticker_list_id, xaxis_title='Time', yaxis_title='Rate of Change', legend_title='Time Periods', template='plotly', 
-        width=graph_width, height=450, xaxis=dict(
-            tickvals = custom_tick_vals, 
-            ticktext = custom_tick_text,
-            tickangle=-90 ))
-            
+    fig2.update_layout( title = ticker_list_id, xaxis_title='Time', yaxis_title='Rate of Change', legend_title='Time Periods', template='plotly', width=graph_width, height=450, 
+                        xaxis=dict(tickvals = custom_tick_vals, ticktext = custom_tick_text,tickangle=-90))
+    
     # ------- FIGURE 333333333333333333333333333333333333333333333333333333333333333333333
     fig3 = go.Figure()
     if isinstance(ticker_list_id_3, str):
@@ -266,16 +286,15 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
             percent_difference_from_first_value_in_list(price)
             fig3.add_trace(go.Scatter(x = x, y=price, mode='lines', name=ticker))
         
-        fig3.update_layout( xaxis_title='Time', yaxis_title='Price', legend_title='Multiple Tickers', template='plotly', width=graph_width, height=500, 
-            xaxis=dict(
-                tickvals = custom_tick_vals,
-                ticktext = custom_tick_text,
-                tickangle=-90 ))
+        fig3.update_layout( xaxis_title='Time', yaxis_title='Price', legend_title='Multiple Tickers', template='plotly', width=graph_width, height=500,
+                        xaxis=dict(tickvals = custom_tick_vals, ticktext = custom_tick_text, tickangle=-90 ))
     return fig1mini, fig2mini, fig1, fig2, fig3
-    
 
 if __name__ == '__main__':
     app.run()
+
+
+
 
 
 
