@@ -1,5 +1,6 @@
 #server = app.server
 
+
 from dash import Dash, html, dcc, callback, Output, Input
 import pandas as pd
 import plotly.express as px
@@ -15,7 +16,7 @@ import datetime
 import yfinance as yf
 
 
-# In[2]:
+# In[176]:
 
 
 def get_minute_stock_data(ticker, time_duration):
@@ -136,11 +137,40 @@ def get_tick_data(time_duration):
 
 def get_open_close_min_max (data):
     return data[0], data[-1], max(data), min(data)
-    
 
+def get_list_of_tickers_from_keyword(list_of_tickers, keyword):
+    if keyword in ["Movers", "Chip", "EV", "Ecom", "Crypto", "Social Media", "Oil and Gas", "ETFs", "Quantum", "Misc group"]:
+        if keyword == "Movers":
+            list_of_tickers.extend(['AAPL', 'MSFT', 'GOOG', 'AMZN', 'INTC', 'TSLA', 'META', 'BABA', 'AMD', 'SHOP', 'ARM'])
+        if keyword == "Chip":
+            list_of_tickers.extend(['NVDA', 'AMD', 'SMCI', 'AVGO', 'ASML', 'INTC', 'QCOM', 'ARM', 'MU'])
+        if keyword == "EV":
+            list_of_tickers.extend(['TSLA', 'RIVN', 'GM', 'LCID', 'NIO', 'VFS', 'XPEV', 'BLNK'])
+        if keyword == "Ecom":
+            list_of_tickers.extend(['AMZN', 'SHOP', 'BABA', 'ABNB'])
+        if keyword == "Crypto":
+            list_of_tickers.extend(['IBIT', 'BITI', 'HUT', 'MARA', "BITF"])
+        if keyword == "Social Media":
+            list_of_tickers.extend(['META', 'SNAP', 'PINS', 'RDDT'])
+        if keyword == "Oil and Gas":
+            list_of_tickers.extend(['UCO', 'PBR', 'XOM', 'KMI', 'ET', 'OXY', 'SLB', 'HAL', 'CVX', 'BKR', 'CVE'])
+        if keyword == "ETFs":
+            list_of_tickers.extend(["TQQQ", "SOXL", "TNA", "IBIT"])
+        if keyword == "Quantum":
+            list_of_tickers.extend(['IONQ', "QBTS"])
+        if keyword == "Misc group":
+            list_of_tickers.extend(['PLTR', 'NKE', 'HIMS', "ELF", "FUBO", "ROKU"])
+    else:
+        list_of_tickers.append(keyword)
+
+
+# In[170]:
 
 
 list_of_tickers = ["^IXIC", "QQQ", "SPY", "RIVN", "HUT", "SMCI", "GOOG", "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", 
+                   "META", "MSFT", "QBTS", "SOXL", "TNA", "IBIT", "HIMS", "PINS", "RDDT", "ELF", "FUBO", "ROKU", "CVNA", "BABA", "BTC-USD", "ETH-USD"]
+
+list_of_tickers_3 = ["QQQ", "Movers", "Chip", "EV", "Ecom", "Crypto", "Social Media", "Oil and Gas", "ETFs", "Quantum" "Misc group", "RIVN", "HUT", "SMCI", "GOOG", "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", 
                    "META", "MSFT", "QBTS", "SOXL", "TNA", "IBIT", "HIMS", "PINS", "RDDT", "ELF", "FUBO", "ROKU", "CVNA", "BABA", "BTC-USD", "ETH-USD"]
 
 app = Dash()
@@ -160,7 +190,7 @@ app.layout = html.Div([
         ], style={'width':'50%', 'padding': '20px', 'background-color': '#f8f9fa', 'border-radius': '10px', 'margin-right': '20px'}),
         
         html.Div([
-            dcc.Dropdown( id='ticker-list-id-3', options=list_of_tickers, multi=True, style={'margin': '5px 0'} ),
+            dcc.Dropdown( id='ticker-list-id-3', options=list_of_tickers_3, multi=True, value='QQQ', style={'margin': '5px 0'} ),
             html.Br(),
             dcc.Slider( id='mov-av-graph3-id', min=5, max=50, step=5, marks={i: str(i) for i in range(5, 51, 5)}, value=5 ),
             html.Button('Refresh Graph', id='refresh-button-id', style={"width": "100%", "height":"20px", "color":"green"})
@@ -181,7 +211,7 @@ app.layout = html.Div([
 ], style={'padding': '0px'})
 
 
-# In[13]:
+# In[172]:
 
 
 @callback(
@@ -269,11 +299,17 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     
     # ------- FIGURE 333333333333333333333333333333333333333333333333333333333333333333333
     fig3 = go.Figure()
-    if isinstance(ticker_list_id_3, str):
-        ticker_list_id_3 = [ticker_list_id_3]
-
-    if ticker_list_id_3 != None:
+    
+    tickers_to_plot = ['QQQ']
+    if isinstance(ticker_list_id_3, str) and len(ticker_list_id_3) > 0:
+        tickers_to_plot = [ticker_list_id_3]
+    else:
+        tickers_to_plot = []
         for ticker in ticker_list_id_3:
+            get_list_of_tickers_from_keyword(tickers_to_plot, ticker)
+    
+    if ticker_list_id_3 != None:
+        for ticker in tickers_to_plot:
             stock_data = get_minute_stock_data(ticker, time_duration)
             price = stock_data["Close"][ticker].tolist()
             price = moving_average_end_at_current(price, mov_av_graph3_id)
@@ -282,7 +318,13 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
         
         fig3.update_layout( xaxis_title='Time', yaxis_title='Price', legend_title='Multiple Tickers', template='plotly', width=graph_width, height=500,
                         xaxis=dict(tickvals = custom_tick_vals, ticktext = custom_tick_text, tickangle=-90 ))
+    
     return fig1mini, fig2mini, fig1, fig2, fig3
+    
+
+
+# In[174]:
+
 
 if __name__ == '__main__':
     app.run()
