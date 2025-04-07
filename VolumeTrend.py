@@ -16,7 +16,7 @@ import datetime
 import yfinance as yf
 
 
-# In[176]:
+# In[65]:
 
 
 def get_minute_stock_data(ticker, time_duration):
@@ -25,11 +25,42 @@ def get_minute_stock_data(ticker, time_duration):
 
     return stock_data
 
+def get_5minute_stock_data(ticker, time_duration):
+    days = str(time_duration) + "d"
+    stock_data = yf.download(ticker, period=days, interval='5m')
+
+    return stock_data
+
 def get_daily_stock_data(ticker, time_duration):
     days = str(time_duration) + "y"
     stock_data = yf.download(ticker, period=days, interval='1d')
 
     return stock_data
+
+def get_oi_shorti (ticker):
+    # call/put open interest, short interest, implied volatility
+    stock = yf.Ticker(ticker)
+    expirations = stock.options
+    if (len(expirations) > 0):
+        df_calls = stock.option_chain(expirations[0]).calls
+        df_puts = stock.option_chain(expirations[0]).puts
+        put_oi = df_puts["openInterest"].sum()
+        call_oi = df_calls["openInterest"].sum()
+        pcr_oi = put_oi / call_oi if call_oi != 0 else -1
+    
+        short_interest = stock.info.get("sharesShort", 1)
+        avg_volume = stock.info.get("averageVolume", None)
+        si_ratio = short_interest / avg_volume if avg_volume else -1
+        return f"{pcr_oi:.2f}", f"{si_ratio:.2f}"
+    else:
+        return -1, -1
+    '''
+    df_calls_iv = df_calls[["strike", "impliedVolatility"]].dropna()
+    df_puts_iv = df_puts[["strike", "impliedVolatility"]].dropna()
+    
+    print("Call Options IV:\n", df_calls_iv.head())
+    print("Put Options IV:\n", df_puts_iv.head())
+    '''
 
 def find_peaks_and_valleys (data, sigma):
     filtered_data = apply_gaussian_filter(data, sigma, "nearest")
@@ -113,6 +144,14 @@ def one_conversion(list, n):
         elif list[i] < 0:
             list[i] = -n
 
+def calculate_macd(data, short_window=12, long_window=26, signal_window=9):
+    "Calculates MACD and signal line."
+    short_ema = data['Close'].ewm(span=short_window, adjust=False).mean()
+    long_ema = data['Close'].ewm(span=long_window, adjust=False).mean()
+    macd = short_ema - long_ema
+    signal = macd.ewm(span=signal_window, adjust=False).mean()
+    return macd, signal
+
 def percent_difference_from_first_value_in_list(data):
     for i in range(1, len(data)):
         if (data[0] + data[i]) == 0:
@@ -141,19 +180,19 @@ def get_open_close_min_max (data):
 def get_list_of_tickers_from_keyword(list_of_tickers, keyword):
     if keyword in ["Movers", "Chip", "EV", "Ecom", "Crypto", "Social Media", "Oil and Gas", "ETFs", "Quantum", "Misc group"]:
         if keyword == "Movers":
-            list_of_tickers.extend(['AAPL', 'MSFT', 'GOOG', 'AMZN', 'INTC', 'TSLA', 'META', 'BABA', 'AMD', 'SHOP', 'ARM'])
+            list_of_tickers.extend(['AAPL', 'MSFT', 'GOOG', 'AMZN', 'INTC', 'TSLA', 'META', 'BABA', 'SHOP', 'ARM', 'NVDA'])
         if keyword == "Chip":
-            list_of_tickers.extend(['NVDA', 'AMD', 'SMCI', 'AVGO', 'ASML', 'INTC', 'QCOM', 'ARM', 'MU'])
+            list_of_tickers.extend(['NVDA', 'AMD', 'SMCI', 'AVGO', 'INTC', 'QCOM', 'ARM', 'MU'])
         if keyword == "EV":
-            list_of_tickers.extend(['TSLA', 'RIVN', 'GM', 'LCID', 'NIO', 'VFS', 'XPEV', 'BLNK'])
+            list_of_tickers.extend(['TSLA', 'RIVN', 'GM', 'LCID', 'NIO', 'XPEV', 'BLNK'])
         if keyword == "Ecom":
             list_of_tickers.extend(['AMZN', 'SHOP', 'BABA', 'ABNB'])
         if keyword == "Crypto":
-            list_of_tickers.extend(['IBIT', 'BITI', 'HUT', 'MARA', "BITF"])
+            list_of_tickers.extend(['IBIT', 'HUT', 'MARA', "BITF"])
         if keyword == "Social Media":
             list_of_tickers.extend(['META', 'SNAP', 'PINS', 'RDDT'])
         if keyword == "Oil and Gas":
-            list_of_tickers.extend(['UCO', 'PBR', 'XOM', 'KMI', 'ET', 'OXY', 'SLB', 'HAL', 'CVX', 'BKR', 'CVE'])
+            list_of_tickers.extend(['PBR', 'XOM', 'KMI', 'ET', 'OXY', 'SLB', 'HAL', 'CVX', 'BKR', 'CVE'])
         if keyword == "ETFs":
             list_of_tickers.extend(["TQQQ", "SOXL", "TNA", "IBIT"])
         if keyword == "Quantum":
@@ -164,14 +203,18 @@ def get_list_of_tickers_from_keyword(list_of_tickers, keyword):
         list_of_tickers.append(keyword)
 
 
-# In[170]:
+# In[91]:
 
 
-list_of_tickers = ["^IXIC", "QQQ", "SPY", "RIVN", "HUT", "SMCI", "GOOG", "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", 
-                   "META", "MSFT", "QBTS", "SOXL", "TNA", "IBIT", "HIMS", "PINS", "RDDT", "ELF", "FUBO", "ROKU", "CVNA", "BABA", "BTC-USD", "ETH-USD"]
+list_of_tickers = ["^VIX", "QQQ", "SPY", "RIVN", "HUT", "SMCI", "GOOG", "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", 
+                   "META", "MSFT", "QBTS", "SOXL", "TNA", "IBIT", "HIMS", "PINS", "RDDT", "ELF", "FUBO", "ROKU", "CVNA", "BABA", "BTC-USD", "ETH-USD", "COST", "WMT",
+                  "ACHR", "OKLO", "RGTI", "JOBY", "RBLX", "MRVL", "KO", "DELL", "MU", "ADOBE", "AI", "CRM", "EA", "EXPE", "F", "SOFI", "U", "UPST", "VFS",
+                  "ABNB", "UCO", "XOM"]
 
-list_of_tickers_3 = ["QQQ", "Movers", "Chip", "EV", "Ecom", "Crypto", "Social Media", "Oil and Gas", "ETFs", "Quantum" "Misc group", "RIVN", "HUT", "SMCI", "GOOG", "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", 
-                   "META", "MSFT", "QBTS", "SOXL", "TNA", "IBIT", "HIMS", "PINS", "RDDT", "ELF", "FUBO", "ROKU", "CVNA", "BABA", "BTC-USD", "ETH-USD"]
+list_of_tickers_3 = ["^VIX", "QQQ", "Movers", "Chip", "EV", "Ecom", "Crypto", "Social Media", "Oil and Gas", "ETFs", "Quantum" "Misc group", "RIVN", "HUT", "SMCI", "GOOG", 
+                     "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", "META", "MSFT", "QBTS", "SOXL", "TNA", "IBIT", "HIMS", 
+                     "PINS", "RDDT", "ELF", "FUBO", "ROKU", "CVNA", "BABA", "BTC-USD", "ETH-USD", "COST", "WMT", "ACHR", "OKLO", "RGTI", "JOBY", "RBLX", "MRVL", 
+                     "KO", "DELL", "MU", "ADOBE", "AI", "CRM", "EA", "EXPE", "F", "SOFI", "U", "UPST", "VFS", "ABNB", "UCO", "XOM"]
 
 app = Dash()
 server = app.server
@@ -192,7 +235,7 @@ app.layout = html.Div([
         html.Div([
             dcc.Dropdown( id='ticker-list-id-3', options=list_of_tickers_3, multi=True, value='QQQ', style={'margin': '5px 0'} ),
             html.Br(),
-            dcc.Slider( id='mov-av-graph3-id', min=5, max=50, step=5, marks={i: str(i) for i in range(5, 51, 5)}, value=5 ),
+            dcc.Slider( id='mov-av-graph3-id', min=5, max=50, step=5, marks={i: str(i) for i in range(5, 51, 5)}, value=20 ),
             html.Button('Refresh Graph', id='refresh-button-id', style={"width": "100%", "height":"20px", "color":"green"})
         ], style={'width': '50%', 'padding': '20px', 'background-color': '#f8f9fa', 'border-radius': '10px', 'margin-right': '20px'}),
     ], style={'display': 'flex', 'margin': '20px'}),
@@ -200,6 +243,11 @@ app.layout = html.Div([
     html.Div([
         dcc.Graph(id='graph-mini1-id', style={'padding': '0px', 'margin':'0px'}),            
         dcc.Graph(id='graph-mini2-id', style={'padding': '0px', 'margin':'0px'}),
+    ], style={'display': 'flex', 'width':'100%'}),
+
+    html.Div([
+        dcc.Graph(id='graph-mini3-id', style={'padding': '0px', 'margin':'0px'}),            
+        dcc.Graph(id='graph-mini4-id', style={'padding': '0px', 'margin':'0px'}),
     ], style={'display': 'flex', 'width':'100%'}),
     
     html.Div([
@@ -211,12 +259,14 @@ app.layout = html.Div([
 ], style={'padding': '0px'})
 
 
-# In[172]:
+# In[93]:
 
 
 @callback(
     [Output('graph-mini1-id', 'figure'),
      Output('graph-mini2-id', 'figure'),
+     Output('graph-mini3-id', 'figure'),
+     Output('graph-mini4-id', 'figure'),
      Output('graph-1-id', 'figure'),
      Output('graph-2-id', 'figure'),
      Output('graph-3-id', 'figure')],
@@ -231,28 +281,52 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     graph_width = 1500
     custom_tick_text, custom_tick_vals = get_tick_data(time_duration)
 
-    stock_data = get_daily_stock_data(ticker_list_id, 1) # Downloading data of last 12 months for min fig 1, 2, 3
+    # Downloading data of last 12 months for minifig 1, 2, 3
+    stock_data = get_daily_stock_data(ticker_list_id, 1) 
+    # ------- FIGURE 1mini1mini1mini1mini1mini1mini1mini1mini1mini1mini1mini1mini1mini
     fig1mini = go.Figure()
     fig1mini.add_trace(go.Scatter(x = stock_data.index, y=stock_data['Close'][ticker_list_id], mode='lines', name='Year', line=dict(color='rgb(101, 110, 242)')))
     fig1mini.add_trace(go.Scatter(x = stock_data.index, y=stock_data['Close'][ticker_list_id].rolling(window=50).mean(), mode='lines', name='Year', line=dict(color='red')))
     fig1mini.add_trace(go.Bar(x = stock_data.index, y=stock_data['Volume'][ticker_list_id], name='Price', yaxis='y2', marker_color='rgba(242, 110, 10, 0.3)'))
-    fig1mini.update_layout(xaxis_title='Year (50 MA)', width=750, height=300, showlegend=False, template='plotly', spikedistance=-1,
-                           xaxis=dict(showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1  ),
-                           yaxis=dict(title='Price', showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1), 
-                           yaxis2=dict(title='Volume', overlaying='y', side='right'))
-    
+    fig1mini.update_layout(xaxis_title='Year (50 MA)', width=graph_width//2, height=300, showlegend=False, template='plotly',
+                           xaxis=dict(), yaxis=dict(title='Price'), yaxis2=dict(title='Volume', overlaying='y', side='right'))
+
+    # ------- FIGURE 2mini2mini2mini2mini2mini2mini2mini2mini2mini2mini2mini2mini2mini
     fig2mini = go.Figure()
     days = 60
     fig2mini.add_trace(go.Scatter(x = stock_data.tail(days).index, y=stock_data.tail(days)['Close'][ticker_list_id], mode='lines', name='Month', line=dict(color='rgb(101, 110, 242)')))
     fig2mini.add_trace(go.Scatter(x = stock_data.tail(days).index, y=stock_data.tail(days)['Close'][ticker_list_id].rolling(window=20).mean(), mode='lines', name='Year', line=dict(color='red')))
     fig2mini.add_trace(go.Bar(x = stock_data.tail(days).index, y=stock_data.tail(days)['Volume'][ticker_list_id], name='Price', yaxis='y2', marker_color='rgba(242, 110, 10, 0.3)'))
-    fig2mini.update_layout(xaxis_title='Month (20 MA)', width=750, height=300, showlegend=False, template='plotly', spikedistance=-1, 
-                           xaxis=dict(showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1  ),
-                           yaxis=dict(title='Price', showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1), 
-                           yaxis2=dict(title='Volume', overlaying='y', side='right'))
+    fig2mini.update_layout(xaxis_title='Month (20 MA)', width=graph_width//2, height=300, showlegend=False, template='plotly', 
+                           xaxis=dict(), yaxis=dict(title='Price'), yaxis2=dict(title='Volume', overlaying='y', side='right'))
     
+    # ------- FIGURE 3mini3mini3mini3mini3mini3mini3mini3mini3mini3mini3mini3mini3mini
+    fig3mini = go.Figure()
+    stock_data['MACD'], stock_data['Signal'] = calculate_macd(stock_data)
+    stock_data = stock_data.reset_index()
+    #histogram = stock_data['MACD'] - stock_data['Signal']
+    
+    fig3mini.add_trace(go.Scatter(x=stock_data.index, y=stock_data['MACD'].rolling(window=mov_av_graph3_id).mean(), name='MACD'))
+    fig3mini.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Signal'].rolling(window=mov_av_graph3_id).mean(), name='Signal Line'))
+    #fig3mini.add_trace(go.Bar(x=stock_data.index, y=histogram, yaxis='y2', marker_color='rgba(10, 220, 10, 0.5)'))
+    fig3mini.add_hline(y = 0, line_width=3, line_color="rgba(101, 110, 242, 0.5)")
+    fig3mini.update_layout(title=None, width=graph_width//2, height=300, yaxis=dict(title='MACD Daily'), yaxis2=dict(overlaying='y', side='right'), xaxis=dict(showticklabels=False), showlegend = False)
 
-    stock_data = get_minute_stock_data(ticker_list_id, time_duration) # Downloading data for fig 1, 2
+    # ------- FIGURE 4mini4mini4mini4mini4mini4mini4mini4mini4mini4mini4mini4mini4mini 
+    # Downloading data of last 5 days of 5 min time frame for minifig 4
+    stock_data = get_5minute_stock_data(ticker_list_id, time_duration)
+    fig4mini = go.Figure()
+    stock_data['MACD'], stock_data['Signal'] = calculate_macd(stock_data)
+    stock_data = stock_data.reset_index()
+    fig4mini.add_trace(go.Scatter(x=stock_data.index, y=stock_data['MACD'].rolling(window=mov_av_graph3_id).mean(), name='MACD'))
+    fig4mini.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Signal'].rolling(window=mov_av_graph3_id).mean(), name='Signal Line'))
+    fig4mini.add_hline(y = 0, line_width=3, line_color="rgba(101, 110, 242, 0.5)")
+    fig4mini.update_layout(title=None, width=graph_width//2, height=300, yaxis=dict(title='MACD 5 min', overlaying='y'), xaxis=dict(showticklabels=False), showlegend = False)
+
+    # Downloading data for minifig fig 1, 2
+    stock_data = get_minute_stock_data(ticker_list_id, time_duration)
+    openI, shortI = get_oi_shorti(ticker_list_id)
+    title_graph = ticker_list_id + " P/C: " + openI + " Short Interest: " + shortI
     price = stock_data["Close"][ticker_list_id].tolist()
     x = [i for i in range(len(price))] # range for x-axis for all the three main graphs
     
@@ -276,10 +350,10 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     fig1.add_hline(y = mx, line_width=3, line_dash="dash", line_color="blue")
     fig1.add_hline(y = mn, line_width=3, line_dash="dash", line_color="blue")
     
-    fig1.update_layout(title = ticker_list_id, xaxis_title='Time', yaxis_title='Price', legend_title='Gaussian Trend', width=graph_width+10, height=550, 
-                        xaxis_rangeslider_visible=False, template='plotly', spikedistance=-1, 
-                        xaxis=dict(tickvals = custom_tick_vals, ticktext = custom_tick_text, tickangle=-90, showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1  ),
-                        yaxis=dict(showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1))
+    fig1.update_layout(title = title_graph, xaxis_title='Time', yaxis_title='Price', legend_title='Gaussian Trend', 
+                       width=graph_width+10, height=550, xaxis_rangeslider_visible=False, template='plotly', spikedistance=-1, 
+                       xaxis=dict(tickvals = custom_tick_vals, ticktext = custom_tick_text, tickangle=-90, showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1  ),
+                       yaxis=dict(showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1))
     # ------- FIGURE 22222222222222222222222222222222222222222222222222222222222222222222
     
     fig2 = go.Figure()
@@ -319,15 +393,16 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
         fig3.update_layout( xaxis_title='Time', yaxis_title='Price', legend_title='Multiple Tickers', template='plotly', width=graph_width, height=500,
                         xaxis=dict(tickvals = custom_tick_vals, ticktext = custom_tick_text, tickangle=-90 ))
     
-    return fig1mini, fig2mini, fig1, fig2, fig3
-    
-
-
-# In[174]:
+    return fig1mini, fig2mini, fig3mini, fig4mini, fig1, fig2, fig3
 
 
 if __name__ == '__main__':
     app.run()
+
+
+
+
+
 
 
 
