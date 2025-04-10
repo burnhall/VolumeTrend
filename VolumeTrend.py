@@ -14,8 +14,6 @@ import datetime
 
 import yfinance as yf
 
-
-
 def get_minute_stock_data(ticker, time_duration):
     days = str(time_duration) + "d"
     stock_data = yf.download(ticker, period=days, interval='1m')
