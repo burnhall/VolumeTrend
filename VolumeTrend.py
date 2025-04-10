@@ -1,6 +1,5 @@
 #server = app.server
 
-
 from dash import Dash, html, dcc, callback, Output, Input
 import pandas as pd
 import plotly.express as px
@@ -15,8 +14,6 @@ import datetime
 
 import yfinance as yf
 
-
-# In[65]:
 
 
 def get_minute_stock_data(ticker, time_duration):
@@ -54,13 +51,6 @@ def get_oi_shorti (ticker):
         return f"{pcr_oi:.2f}", f"{si_ratio:.2f}"
     else:
         return -1, -1
-    '''
-    df_calls_iv = df_calls[["strike", "impliedVolatility"]].dropna()
-    df_puts_iv = df_puts[["strike", "impliedVolatility"]].dropna()
-    
-    print("Call Options IV:\n", df_calls_iv.head())
-    print("Put Options IV:\n", df_puts_iv.head())
-    '''
 
 def find_peaks_and_valleys (data, sigma):
     filtered_data = apply_gaussian_filter(data, sigma, "nearest")
@@ -203,9 +193,6 @@ def get_list_of_tickers_from_keyword(list_of_tickers, keyword):
         list_of_tickers.append(keyword)
 
 
-# In[91]:
-
-
 list_of_tickers = ["^VIX", "QQQ", "SPY", "RIVN", "HUT", "SMCI", "GOOG", "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", 
                    "META", "MSFT", "QBTS", "SOXL", "TNA", "IBIT", "HIMS", "PINS", "RDDT", "ELF", "FUBO", "ROKU", "CVNA", "BABA", "BTC-USD", "ETH-USD", "COST", "WMT",
                   "ACHR", "OKLO", "RGTI", "JOBY", "RBLX", "MRVL", "KO", "DELL", "MU", "ADOBE", "AI", "CRM", "EA", "EXPE", "F", "SOFI", "U", "UPST", "VFS",
@@ -227,8 +214,7 @@ app.layout = html.Div([
             dcc.Dropdown( id='ticker-list-id', options=list_of_tickers, value='QQQ', style={'margin': '5px 0'} ),
             html.Br(),
             dcc.Slider( id='time-duration', min=2, max=6, step=1, marks={i: str(i) for i in range(2, 7, 1)}, value=6 ),
-            dcc.Checklist(options=[ { "label": "15 min ROC", "value": "ROC15"},
-                                    { "label": "Full Time-Period Min, Max", "value": "FullTimePeriod",},
+            dcc.Checklist(options=[{ "label": "Full Time-Period Min, Max", "value": "FullTimePeriod",},
                                   ], id='check-list-id', labelStyle={"display": "flex", "align-items": "center", 'font-size': 15, "color": "green"})
         ], style={'width':'50%', 'padding': '20px', 'background-color': '#f8f9fa', 'border-radius': '10px', 'margin-right': '20px'}),
         
@@ -257,9 +243,6 @@ app.layout = html.Div([
     ], style={'width':'100%', 'padding': '0px', 'margin':'0px', 'gap': '0px'})
 
 ], style={'padding': '0px'})
-
-
-# In[93]:
 
 
 @callback(
@@ -357,9 +340,8 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     # ------- FIGURE 22222222222222222222222222222222222222222222222222222222222222222222
     
     fig2 = go.Figure()
-    if check_list_id != None and "ROC15" in check_list_id:
-        second_diff15 = second_order_difference(moving_average_end_at_current(price, 15), 15)
-        fig2.add_trace(go.Scatter(x = x, y=second_diff15, mode='lines', name='15 minutes', line=dict(color='orange')))
+    second_diff15 = second_order_difference(moving_average_end_at_current(price, 15), 15)
+    fig2.add_trace(go.Scatter(x = x, y=second_diff15, mode='lines', name='15 minutes', line=dict(color='orange'), visible='legendonly'))
     second_diff30 = second_order_difference(moving_average_end_at_current(price, 30), 30)
     fig2.add_trace(go.Scatter(x = x, y=second_diff30, mode='lines', name='30 minutes', line=dict(color='red')))
     second_diff60 = second_order_difference(moving_average_end_at_current(price, 60), 60)
@@ -388,29 +370,18 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
             price = stock_data["Close"][ticker].tolist()
             price = moving_average_end_at_current(price, mov_av_graph3_id)
             percent_difference_from_first_value_in_list(price)
-            fig3.add_trace(go.Scatter(x = x, y=price, mode='lines', name=ticker))
+            if ticker == "QQQ":
+                fig3.add_trace(go.Scatter(x = x, y=price, mode='lines', name=ticker, line=dict(color='black')))
+            else:
+                fig3.add_trace(go.Scatter(x = x, y=price, mode='lines', name=ticker, visible='legendonly'))
         
         fig3.update_layout( xaxis_title='Time', yaxis_title='Price', legend_title='Multiple Tickers', template='plotly', width=graph_width, height=500,
                         xaxis=dict(tickvals = custom_tick_vals, ticktext = custom_tick_text, tickangle=-90 ))
     
     return fig1mini, fig2mini, fig3mini, fig4mini, fig1, fig2, fig3
-
-
+    
 if __name__ == '__main__':
     app.run()
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
