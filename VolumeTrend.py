@@ -14,6 +14,8 @@ import datetime
 
 import yfinance as yf
 
+
+
 def get_minute_stock_data(ticker, time_duration):
     days = str(time_duration) + "d"
     stock_data = yf.download(ticker, period=days, interval='1m')
@@ -23,6 +25,12 @@ def get_minute_stock_data(ticker, time_duration):
 def get_5minute_stock_data(ticker, time_duration):
     days = str(time_duration) + "d"
     stock_data = yf.download(ticker, period=days, interval='5m')
+
+    return stock_data
+
+def get_30minute_stock_data(ticker, time_duration):
+    days = str(time_duration) + "d"
+    stock_data = yf.download(ticker, period=days, interval='30m')
 
     return stock_data
 
@@ -162,6 +170,20 @@ def get_tick_data(time_duration):
 
     return custom_tick_text, custom_tick_vals
 
+def get_heiken_ashi (df, t):
+    ha_df = pd.DataFrame()
+    ha_df['Close'] = (df['Open'] + df['High'] + df['Low'] + df['Close']) / 4
+    
+    # HA_Open needs to be calculated recursively
+    ha_open = [(df['Open'][t][0] + df['Close'][t][0]) / 2]  # First HA_Open = avg(Open, Close)
+    for i in range(1, len(df)):
+        ha_open.append((ha_open[i-1] + ha_df['Close'][i-1]) / 2)
+    ha_df['Open'] = ha_open
+    
+    ha_df['High'] = ha_df[['Open', 'Close']].join(df['High']).max(axis=1)
+    ha_df['Low'] = ha_df[['Open', 'Close']].join(df['Low']).min(axis=1)
+    return ha_df
+
 def get_open_close_min_max (data):
     return data[0], data[-1], max(data), min(data)
 
@@ -189,6 +211,9 @@ def get_list_of_tickers_from_keyword(list_of_tickers, keyword):
             list_of_tickers.extend(['PLTR', 'NKE', 'HIMS', "ELF", "FUBO", "ROKU"])
     else:
         list_of_tickers.append(keyword)
+
+
+# In[366]:
 
 
 list_of_tickers = ["^VIX", "QQQ", "SPY", "RIVN", "HUT", "SMCI", "GOOG", "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", 
@@ -243,6 +268,9 @@ app.layout = html.Div([
 ], style={'padding': '0px'})
 
 
+# In[368]:
+
+
 @callback(
     [Output('graph-mini1-id', 'figure'),
      Output('graph-mini2-id', 'figure'),
@@ -260,49 +288,53 @@ app.layout = html.Div([
 )
 def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3, mov_av_graph3_id, refresh_button_id):
     graph_width = 1500
+    macd_window_size = 5
     custom_tick_text, custom_tick_vals = get_tick_data(time_duration)
 
     # Downloading data of last 12 months for minifig 1, 2, 3
     stock_data = get_daily_stock_data(ticker_list_id, 1) 
-    # ------- FIGURE 1mini1mini1mini1mini1mini1mini1mini1mini1mini1mini1mini1mini1mini
+    # ------- FIGURE 1mini1mini1mini1mini1mini1mini1mini1mini1mini1mini1mini1mini1mini daily line chart for 1 year
     fig1mini = go.Figure()
     fig1mini.add_trace(go.Scatter(x = stock_data.index, y=stock_data['Close'][ticker_list_id], mode='lines', name='Year', line=dict(color='rgb(101, 110, 242)')))
     fig1mini.add_trace(go.Scatter(x = stock_data.index, y=stock_data['Close'][ticker_list_id].rolling(window=50).mean(), mode='lines', name='Year', line=dict(color='red')))
     fig1mini.add_trace(go.Bar(x = stock_data.index, y=stock_data['Volume'][ticker_list_id], name='Price', yaxis='y2', marker_color='rgba(242, 110, 10, 0.3)'))
-    fig1mini.update_layout(xaxis_title='Year (50 MA)', width=graph_width//2, height=300, showlegend=False, template='plotly',
+    fig1mini.update_layout(xaxis_title='1 Year daily data (50 MA)', width=graph_width//2, height=300, showlegend=False, template='plotly',
                            xaxis=dict(), yaxis=dict(title='Price'), yaxis2=dict(title='Volume', overlaying='y', side='right'))
 
-    # ------- FIGURE 2mini2mini2mini2mini2mini2mini2mini2mini2mini2mini2mini2mini2mini
-    fig2mini = go.Figure()
-    days = 60
-    fig2mini.add_trace(go.Scatter(x = stock_data.tail(days).index, y=stock_data.tail(days)['Close'][ticker_list_id], mode='lines', name='Month', line=dict(color='rgb(101, 110, 242)')))
-    fig2mini.add_trace(go.Scatter(x = stock_data.tail(days).index, y=stock_data.tail(days)['Close'][ticker_list_id].rolling(window=20).mean(), mode='lines', name='Year', line=dict(color='red')))
-    fig2mini.add_trace(go.Bar(x = stock_data.tail(days).index, y=stock_data.tail(days)['Volume'][ticker_list_id], name='Price', yaxis='y2', marker_color='rgba(242, 110, 10, 0.3)'))
-    fig2mini.update_layout(xaxis_title='Month (20 MA)', width=graph_width//2, height=300, showlegend=False, template='plotly', 
-                           xaxis=dict(), yaxis=dict(title='Price'), yaxis2=dict(title='Volume', overlaying='y', side='right'))
-    
-    # ------- FIGURE 3mini3mini3mini3mini3mini3mini3mini3mini3mini3mini3mini3mini3mini
+    # ------- FIGURE 3mini3mini3mini3mini3mini3mini3mini3mini3mini3mini3mini3mini3mini daily MACD for 1 year
     fig3mini = go.Figure()
     stock_data['MACD'], stock_data['Signal'] = calculate_macd(stock_data)
     stock_data = stock_data.reset_index()
     #histogram = stock_data['MACD'] - stock_data['Signal']
     
-    fig3mini.add_trace(go.Scatter(x=stock_data.index, y=stock_data['MACD'].rolling(window=mov_av_graph3_id).mean(), name='MACD'))
-    fig3mini.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Signal'].rolling(window=mov_av_graph3_id).mean(), name='Signal Line'))
+    fig3mini.add_trace(go.Scatter(x=stock_data.index, y=stock_data['MACD'].rolling(window=macd_window_size).mean(), name='MACD'))
+    fig3mini.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Signal'].rolling(window=macd_window_size).mean(), name='Signal Line'))
     #fig3mini.add_trace(go.Bar(x=stock_data.index, y=histogram, yaxis='y2', marker_color='rgba(10, 220, 10, 0.5)'))
     fig3mini.add_hline(y = 0, line_width=3, line_color="rgba(101, 110, 242, 0.5)")
-    fig3mini.update_layout(title=None, width=graph_width//2, height=300, yaxis=dict(title='MACD Daily'), yaxis2=dict(overlaying='y', side='right'), xaxis=dict(showticklabels=False), showlegend = False)
+    fig3mini.update_layout(title=None, width=graph_width//2, height=300, yaxis=dict(title='1 year daily MACD'), yaxis2=dict(overlaying='y', side='right'), xaxis=dict(showticklabels=False), showlegend = False)
 
-    # ------- FIGURE 4mini4mini4mini4mini4mini4mini4mini4mini4mini4mini4mini4mini4mini 
-    # Downloading data of last 5 days of 5 min time frame for minifig 4
-    stock_data = get_5minute_stock_data(ticker_list_id, time_duration)
+    # Downloading data of last 10 days of 30 min time frame for minifig 2, 4
+    stock_data = get_30minute_stock_data(ticker_list_id, 7)
+    df_ha = get_heiken_ashi(stock_data, ticker_list_id)
+    # ------- FIGURE 2mini2mini2mini2mini2mini2mini2mini2mini2mini2mini2mini2mini2mini 30 min candle stick for 60 time periods
+    fig2mini = go.Figure()
+    #fig2mini.add_trace(go.Candlestick(x=stock_data.index, open=stock_data['Open'][ticker_list_id], high=stock_data['High'][ticker_list_id], low=stock_data['Low'][ticker_list_id], close=stock_data['Close'][ticker_list_id]))
+    fig2mini.add_trace(go.Candlestick(x=df_ha.index, open=df_ha['Open'], high=df_ha['High'], low=df_ha['Low'], close=df_ha['Close']))
+    #fig2mini.add_trace(go.Scatter(x = stock_data.index, y=stock_data['Close'][ticker_list_id], mode='lines', name='Month', line=dict(color='rgb(101, 110, 242)')))
+    #fig2mini.add_trace(go.Scatter(x = stock_data.index, y=stock_data['Close'][ticker_list_id].rolling(window=20).mean(), mode='lines', name='Year', line=dict(color='red')))
+    fig2mini.add_trace(go.Bar(x = stock_data.index, y=stock_data['Volume'][ticker_list_id], name='Price', yaxis='y2', marker_color='rgba(242, 110, 10, 0.3)'))
+    fig2mini.update_layout(xaxis_title='7 days - 30 min', width=graph_width//2, height=300, showlegend=False, template='plotly', 
+                           xaxis=dict(rangeslider=dict(visible=False), rangebreaks=[dict(bounds=["sat", "mon"]),dict(bounds=[20, 13.5], pattern="hour")],type='date'), 
+                           yaxis=dict(title='Price'), yaxis2=dict(title='Volume', overlaying='y', side='right'))
+    
+    # ------- FIGURE 4mini4mini4mini4mini4mini4mini4mini4mini4mini4mini4mini4mini4mini 30 min MACD for60 time periods
     fig4mini = go.Figure()
     stock_data['MACD'], stock_data['Signal'] = calculate_macd(stock_data)
     stock_data = stock_data.reset_index()
-    fig4mini.add_trace(go.Scatter(x=stock_data.index, y=stock_data['MACD'].rolling(window=mov_av_graph3_id).mean(), name='MACD'))
-    fig4mini.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Signal'].rolling(window=mov_av_graph3_id).mean(), name='Signal Line'))
+    fig4mini.add_trace(go.Scatter(x=stock_data.index, y=stock_data['MACD'].rolling(window=macd_window_size).mean(), name='MACD'))
+    fig4mini.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Signal'].rolling(window=macd_window_size).mean(), name='Signal Line'))
     fig4mini.add_hline(y = 0, line_width=3, line_color="rgba(101, 110, 242, 0.5)")
-    fig4mini.update_layout(title=None, width=graph_width//2, height=300, yaxis=dict(title='MACD 5 min', overlaying='y'), xaxis=dict(showticklabels=False), showlegend = False)
+    fig4mini.update_layout(title=None, width=graph_width//2, height=300, yaxis=dict(title='MACD 30 min', overlaying='y'), xaxis=dict(showticklabels=False), showlegend = False)
 
     # Downloading data for minifig fig 1, 2
     stock_data = get_minute_stock_data(ticker_list_id, time_duration)
@@ -324,9 +356,9 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     fig1 = go.Figure()
     #fig1.add_trace(go.Candlestick(x=x, open=open_prices, high=max_prices, low=min_prices, close=close_prices, increasing_line_color= 'rgba(10, 200, 10, 0.5)', decreasing_line_color= 'rgba(200, 10, 10, 0.5)', name = ticker_list_id))
     fig1.add_trace(go.Scatter(x = x, y=price, mode='lines', name='Price', line=dict(color='rgba(101, 110, 242, 0.5)')))
-    fig1.add_trace(go.Scatter(x = x, y=price30[:-30], mode='lines', name='Gaussian 30',  line=dict(color='red')))
-    fig1.add_trace(go.Scatter(x = x, y=price100[:-100], mode='lines', name='Gaussian 100', line=dict(color='light green')))
-    fig1.add_trace(go.Scatter(x = x, y=price200[:-200], mode='lines', name='Gaussian 200', line=dict(color='black')))
+    fig1.add_trace(go.Scatter(x = x, y=price30[:-15], mode='lines', name='Gaussian 30',  line=dict(color='red')))
+    fig1.add_trace(go.Scatter(x = x, y=price100[:-50], mode='lines', name='Gaussian 100', line=dict(color='light green')))
+    fig1.add_trace(go.Scatter(x = x, y=price200[:-100], mode='lines', name='Gaussian 200', line=dict(color='black')))
     fig1.add_hline(y = cl, line_width=3, line_color="orange")
     fig1.add_hline(y = mx, line_width=3, line_dash="dash", line_color="blue")
     fig1.add_hline(y = mn, line_width=3, line_dash="dash", line_color="blue")
@@ -378,8 +410,17 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     
     return fig1mini, fig2mini, fig3mini, fig4mini, fig1, fig2, fig3
     
+
+
+
 if __name__ == '__main__':
     app.run()
+
+
+
+
+
+
 
 
 
