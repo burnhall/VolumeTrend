@@ -1,9 +1,11 @@
 #server = app.server
 
+
 from dash import Dash, html, dcc, callback, Output, Input
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
 
@@ -213,9 +215,6 @@ def get_list_of_tickers_from_keyword(list_of_tickers, keyword):
         list_of_tickers.append(keyword)
 
 
-# In[366]:
-
-
 list_of_tickers = ["^VIX", "QQQ", "SPY", "RIVN", "HUT", "SMCI", "GOOG", "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", 
                    "META", "MSFT", "QBTS", "SOXL", "TNA", "IBIT", "HIMS", "PINS", "RDDT", "ELF", "FUBO", "ROKU", "CVNA", "BABA", "BTC-USD", "ETH-USD", "COST", "WMT",
                   "ACHR", "OKLO", "RGTI", "JOBY", "RBLX", "MRVL", "KO", "DELL", "MU", "ADOBE", "AI", "CRM", "EA", "EXPE", "F", "SOFI", "U", "UPST", "VFS",
@@ -228,7 +227,6 @@ list_of_tickers_3 = ["^VIX", "QQQ", "Movers", "Chip", "EV", "Ecom", "Crypto", "S
 
 app = Dash()
 server = app.server
-
 app.layout = html.Div([
     html.H1('Stock Analysis Board', style={'textAlign': 'center', 'color': '#2c3e50', 'margin-bottom': '30px'}),
     
@@ -236,7 +234,7 @@ app.layout = html.Div([
         html.Div([
             dcc.Dropdown( id='ticker-list-id', options=list_of_tickers, value='QQQ', style={'margin': '5px 0'} ),
             html.Br(),
-            dcc.Slider( id='time-duration', min=2, max=6, step=1, marks={i: str(i) for i in range(2, 7, 1)}, value=6 ),
+            dcc.Slider( id='time-duration', min=2, max=6, step=1, marks={i: str(i) for i in range(2, 7, 1)}, value=3 ),
             dcc.Checklist(options=[{ "label": "Full Time-Period Min, Max", "value": "FullTimePeriod",},
                                   ], id='check-list-id', labelStyle={"display": "flex", "align-items": "center", 'font-size': 15, "color": "green"})
         ], style={'width':'50%', 'padding': '20px', 'background-color': '#f8f9fa', 'border-radius': '10px', 'margin-right': '20px'}),
@@ -244,7 +242,7 @@ app.layout = html.Div([
         html.Div([
             dcc.Dropdown( id='ticker-list-id-3', options=list_of_tickers_3, multi=True, value='QQQ', style={'margin': '5px 0'} ),
             html.Br(),
-            dcc.Slider( id='mov-av-graph3-id', min=5, max=50, step=5, marks={i: str(i) for i in range(5, 51, 5)}, value=20 ),
+            dcc.Slider( id='mov-av-graph3-id', min=5, max=50, step=5, marks={i: str(i) for i in range(5, 51, 5)}, value=15 ),
             html.Button('Refresh Graph', id='refresh-button-id', style={"width": "100%", "height":"20px", "color":"green"})
         ], style={'width': '50%', 'padding': '20px', 'background-color': '#f8f9fa', 'border-radius': '10px', 'margin-right': '20px'}),
     ], style={'display': 'flex', 'margin': '20px'}),
@@ -267,8 +265,6 @@ app.layout = html.Div([
 
 ], style={'padding': '0px'})
 
-
-# In[368]:
 
 
 @callback(
@@ -336,29 +332,28 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     fig4mini.add_hline(y = 0, line_width=3, line_color="rgba(101, 110, 242, 0.5)")
     fig4mini.update_layout(title=None, width=graph_width//2, height=300, yaxis=dict(title='MACD 30 min', overlaying='y'), xaxis=dict(showticklabels=False), showlegend = False)
 
-    # Downloading data for minifig fig 1, 2
+    # Downloading data for fig 1, 2
     stock_data = get_minute_stock_data(ticker_list_id, time_duration)
     openI, shortI = get_oi_shorti(ticker_list_id)
     title_graph = ticker_list_id + " P/C: " + openI + " Short Interest: " + shortI
     price = stock_data["Close"][ticker_list_id].tolist()
-    x = [i for i in range(len(price))] # range for x-axis for all the three main graphs
+    x = [i for i in range(len(stock_data))] # range for x-axis for all the three main graphs
     
     # ------- FIGURE 1111111111111111111111111111111111111111111111111111111111111111111111
     if check_list_id != None and "FullTimePeriod" in check_list_id:
         op, cl, mx, mn = get_open_close_min_max(price[:(time_duration-1) * 390])
     else: # yesterday's
         op, cl, mx, mn = get_open_close_min_max(price[(time_duration-2) * 390:(time_duration-1) * 390])
-        
-    price30 = apply_gaussian_filter(price, 30, "nearest")
-    price100 = apply_gaussian_filter(price, 100, "nearest")
-    price200 = apply_gaussian_filter(price, 200, "nearest")
     
     fig1 = go.Figure()
-    #fig1.add_trace(go.Candlestick(x=x, open=open_prices, high=max_prices, low=min_prices, close=close_prices, increasing_line_color= 'rgba(10, 200, 10, 0.5)', decreasing_line_color= 'rgba(200, 10, 10, 0.5)', name = ticker_list_id))
-    fig1.add_trace(go.Scatter(x = x, y=price, mode='lines', name='Price', line=dict(color='rgba(101, 110, 242, 0.5)')))
-    fig1.add_trace(go.Scatter(x = x, y=price30[:-15], mode='lines', name='Gaussian 30',  line=dict(color='red')))
-    fig1.add_trace(go.Scatter(x = x, y=price100[:-50], mode='lines', name='Gaussian 100', line=dict(color='light green')))
-    fig1.add_trace(go.Scatter(x = x, y=price200[:-100], mode='lines', name='Gaussian 200', line=dict(color='black')))
+    #df_ha = get_heiken_ashi(stock_data, ticker_list_id)
+    #fig1.add_trace(go.Candlestick(x=x, open=df_ha['Open'], high=df_ha['High'], low=df_ha['Low'], close=df_ha['Close'], name = ticker_list_id))
+    fig1.add_trace(go.Scatter(x = x, y=stock_data["Close"][ticker_list_id], mode='lines', name='Price', line=dict(color='rgba(101, 110, 242, 0.5)')))
+    
+    fig1.add_trace(go.Scatter(x = x, y=stock_data["Close"][ticker_list_id].rolling(window=20).mean(), mode='lines', name='Mov Avg 20',  line=dict(color='red')))
+    fig1.add_trace(go.Scatter(x = x, y=stock_data["Close"][ticker_list_id].rolling(window=50).mean(), mode='lines', name='Mov Avg 50', line=dict(color='light green'), visible='legendonly'))
+    fig1.add_trace(go.Scatter(x = x, y=stock_data["Close"][ticker_list_id].rolling(window=100).mean(), mode='lines', name='Mov Avg 100', line=dict(color='black'), visible='legendonly'))
+        
     fig1.add_hline(y = cl, line_width=3, line_color="orange")
     fig1.add_hline(y = mx, line_width=3, line_dash="dash", line_color="blue")
     fig1.add_hline(y = mn, line_width=3, line_dash="dash", line_color="blue")
@@ -370,14 +365,18 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     # ------- FIGURE 22222222222222222222222222222222222222222222222222222222222222222222
     
     fig2 = go.Figure()
-    second_diff15 = second_order_difference(moving_average_end_at_current(price, 15), 15)
-    fig2.add_trace(go.Scatter(x = x, y=second_diff15, mode='lines', name='15 minutes', line=dict(color='orange'), visible='legendonly'))
-    second_diff30 = second_order_difference(moving_average_end_at_current(price, 30), 30)
+    #second_diff15 = second_order_difference(moving_average_end_at_current(price, 15), 15)
+    second_diff15 = second_order_difference(stock_data["Close"][ticker_list_id].rolling(window=mov_av_graph3_id).mean(), 15)
+    fig2.add_trace(go.Scatter(x = x, y=second_diff15, mode='lines', name='15 minutes', line=dict(color='orange')))
+    #second_diff30 = second_order_difference(moving_average_end_at_current(price, 30), 30)
+    second_diff30 = second_order_difference(stock_data["Close"][ticker_list_id].rolling(window=mov_av_graph3_id).mean(), 30)
     fig2.add_trace(go.Scatter(x = x, y=second_diff30, mode='lines', name='30 minutes', line=dict(color='red')))
-    second_diff60 = second_order_difference(moving_average_end_at_current(price, 60), 60)
-    fig2.add_trace(go.Scatter(x = x, y=second_diff60, mode='lines', name='1 hour', line=dict(color='rgb(77, 163, 126)')))
-    second_diff120 = second_order_difference(moving_average_end_at_current(price, 120), 120)
-    fig2.add_trace(go.Scatter(x = x, y=second_diff120, mode='lines', name='2 hours', line=dict(color='black')))
+    #second_diff60 = second_order_difference(moving_average_end_at_current(price, 60), 60)
+    second_diff60 = second_order_difference(stock_data["Close"][ticker_list_id].rolling(window=mov_av_graph3_id).mean(), 60)
+    fig2.add_trace(go.Scatter(x = x, y=second_diff60, mode='lines', name='1 hour', line=dict(color='rgb(77, 163, 126)'), visible='legendonly'))
+    #second_diff120 = second_order_difference(moving_average_end_at_current(price, 120), 120)
+    second_diff120 = second_order_difference(stock_data["Close"][ticker_list_id].rolling(window=mov_av_graph3_id).mean(), 120)
+    fig2.add_trace(go.Scatter(x = x, y=second_diff120, mode='lines', name='2 hours', line=dict(color='black'), visible='legendonly'))
     fig2.add_hline(y = 0, line_width=3, line_color="rgba(101, 110, 242, 0.5)")
     
     fig2.update_layout( title = ticker_list_id, xaxis_title='Time', yaxis_title='Rate of Change', legend_title='Time Periods', template='plotly', width=graph_width, height=450, 
@@ -411,10 +410,9 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     return fig1mini, fig2mini, fig3mini, fig4mini, fig1, fig2, fig3
     
 
-
-
 if __name__ == '__main__':
     app.run()
+
 
 
 
