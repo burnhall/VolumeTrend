@@ -1,5 +1,7 @@
 #server = app.server
 
+# In[1]:
+
 
 from dash import Dash, html, dcc, callback, Output, Input
 import pandas as pd
@@ -16,6 +18,8 @@ import datetime
 
 import yfinance as yf
 
+
+# In[2]:
 
 
 def get_minute_stock_data(ticker, time_duration):
@@ -215,6 +219,9 @@ def get_list_of_tickers_from_keyword(list_of_tickers, keyword):
         list_of_tickers.append(keyword)
 
 
+# In[33]:
+
+
 list_of_tickers = ["^VIX", "QQQ", "SPY", "RIVN", "HUT", "SMCI", "GOOG", "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", 
                    "META", "MSFT", "QBTS", "SOXL", "TNA", "IBIT", "HIMS", "PINS", "RDDT", "ELF", "FUBO", "ROKU", "CVNA", "BABA", "BTC-USD", "ETH-USD", "COST", "WMT",
                   "ACHR", "OKLO", "RGTI", "JOBY", "RBLX", "MRVL", "KO", "DELL", "MU", "ADOBE", "AI", "CRM", "EA", "EXPE", "F", "SOFI", "U", "UPST", "VFS",
@@ -227,6 +234,7 @@ list_of_tickers_3 = ["^VIX", "QQQ", "Movers", "Chip", "EV", "Ecom", "Crypto", "S
 
 app = Dash()
 server = app.server
+
 app.layout = html.Div([
     html.H1('Stock Analysis Board', style={'textAlign': 'center', 'color': '#2c3e50', 'margin-bottom': '30px'}),
     
@@ -234,7 +242,7 @@ app.layout = html.Div([
         html.Div([
             dcc.Dropdown( id='ticker-list-id', options=list_of_tickers, value='QQQ', style={'margin': '5px 0'} ),
             html.Br(),
-            dcc.Slider( id='time-duration', min=2, max=6, step=1, marks={i: str(i) for i in range(2, 7, 1)}, value=3 ),
+            dcc.Slider( id='time-duration', min=2, max=6, step=1, marks={i: str(i) for i in range(2, 7, 1)}, value=2 ),
             dcc.Checklist(options=[{ "label": "Full Time-Period Min, Max", "value": "FullTimePeriod",},
                                   ], id='check-list-id', labelStyle={"display": "flex", "align-items": "center", 'font-size': 15, "color": "green"})
         ], style={'width':'50%', 'padding': '20px', 'background-color': '#f8f9fa', 'border-radius': '10px', 'margin-right': '20px'}),
@@ -242,7 +250,7 @@ app.layout = html.Div([
         html.Div([
             dcc.Dropdown( id='ticker-list-id-3', options=list_of_tickers_3, multi=True, value='QQQ', style={'margin': '5px 0'} ),
             html.Br(),
-            dcc.Slider( id='mov-av-graph3-id', min=5, max=50, step=5, marks={i: str(i) for i in range(5, 51, 5)}, value=15 ),
+            dcc.Slider( id='mov-av-graph3-id', min=5, max=50, step=1, marks={i: str(i) for i in range(5, 51, 5)}, value=10 ),
             html.Button('Refresh Graph', id='refresh-button-id', style={"width": "100%", "height":"20px", "color":"green"})
         ], style={'width': '50%', 'padding': '20px', 'background-color': '#f8f9fa', 'border-radius': '10px', 'margin-right': '20px'}),
     ], style={'display': 'flex', 'margin': '20px'}),
@@ -265,6 +273,8 @@ app.layout = html.Div([
 
 ], style={'padding': '0px'})
 
+
+# In[35]:
 
 
 @callback(
@@ -346,37 +356,31 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
         op, cl, mx, mn = get_open_close_min_max(price[(time_duration-2) * 390:(time_duration-1) * 390])
     
     fig1 = go.Figure()
-    #df_ha = get_heiken_ashi(stock_data, ticker_list_id)
-    #fig1.add_trace(go.Candlestick(x=x, open=df_ha['Open'], high=df_ha['High'], low=df_ha['Low'], close=df_ha['Close'], name = ticker_list_id))
     fig1.add_trace(go.Scatter(x = x, y=stock_data["Close"][ticker_list_id], mode='lines', name='Price', line=dict(color='rgba(101, 110, 242, 0.5)')))
     
-    fig1.add_trace(go.Scatter(x = x, y=stock_data["Close"][ticker_list_id].rolling(window=20).mean(), mode='lines', name='Mov Avg 20',  line=dict(color='red')))
-    fig1.add_trace(go.Scatter(x = x, y=stock_data["Close"][ticker_list_id].rolling(window=50).mean(), mode='lines', name='Mov Avg 50', line=dict(color='light green'), visible='legendonly'))
-    fig1.add_trace(go.Scatter(x = x, y=stock_data["Close"][ticker_list_id].rolling(window=100).mean(), mode='lines', name='Mov Avg 100', line=dict(color='black'), visible='legendonly'))
+    fig1.add_trace(go.Scatter(x = x, y=stock_data["Close"][ticker_list_id].ewm(span=20, adjust=False).mean(), mode='lines', name='Mov Avg 20',  line=dict(color='red')))
+    fig1.add_trace(go.Scatter(x = x, y=stock_data["Close"][ticker_list_id].ewm(span=50, adjust=False).mean(), mode='lines', name='Mov Avg 50', line=dict(color='light green'), visible='legendonly'))
+    fig1.add_trace(go.Scatter(x = x, y=stock_data["Close"][ticker_list_id].ewm(span=100, adjust=False).mean(), mode='lines', name='Mov Avg 100', line=dict(color='black'), visible='legendonly'))
         
     fig1.add_hline(y = cl, line_width=3, line_color="orange")
     fig1.add_hline(y = mx, line_width=3, line_dash="dash", line_color="blue")
     fig1.add_hline(y = mn, line_width=3, line_dash="dash", line_color="blue")
     
-    fig1.update_layout(title = title_graph, xaxis_title='Time', yaxis_title='Price', legend_title='Gaussian Trend', 
+    fig1.update_layout(title = title_graph, xaxis_title='Time', yaxis_title='Price', legend_title='Gaussian Trend',
                        width=graph_width+10, height=550, xaxis_rangeslider_visible=False, template='plotly', spikedistance=-1, 
                        xaxis=dict(tickvals = custom_tick_vals, ticktext = custom_tick_text, tickangle=-90, showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1  ),
                        yaxis=dict(showspikes=True, spikemode='across', spikesnap='cursor', spikethickness=1))
     # ------- FIGURE 22222222222222222222222222222222222222222222222222222222222222222222
     
     fig2 = go.Figure()
-    #second_diff15 = second_order_difference(moving_average_end_at_current(price, 15), 15)
+    second_diff10 = second_order_difference(stock_data["Close"][ticker_list_id].rolling(window=mov_av_graph3_id).mean(), 10)
+    fig2.add_trace(go.Scatter(x = x, y=second_diff10, mode='lines', name='10 minutes', line=dict(color='orange')))
     second_diff15 = second_order_difference(stock_data["Close"][ticker_list_id].rolling(window=mov_av_graph3_id).mean(), 15)
-    fig2.add_trace(go.Scatter(x = x, y=second_diff15, mode='lines', name='15 minutes', line=dict(color='orange')))
-    #second_diff30 = second_order_difference(moving_average_end_at_current(price, 30), 30)
+    fig2.add_trace(go.Scatter(x = x, y=second_diff15, mode='lines', name='15 minutes', line=dict(color='red'), visible='legendonly'))
     second_diff30 = second_order_difference(stock_data["Close"][ticker_list_id].rolling(window=mov_av_graph3_id).mean(), 30)
-    fig2.add_trace(go.Scatter(x = x, y=second_diff30, mode='lines', name='30 minutes', line=dict(color='red')))
-    #second_diff60 = second_order_difference(moving_average_end_at_current(price, 60), 60)
+    fig2.add_trace(go.Scatter(x = x, y=second_diff30, mode='lines', name='30 minutes', line=dict(color='rgb(77, 163, 126)'), visible='legendonly'))
     second_diff60 = second_order_difference(stock_data["Close"][ticker_list_id].rolling(window=mov_av_graph3_id).mean(), 60)
-    fig2.add_trace(go.Scatter(x = x, y=second_diff60, mode='lines', name='1 hour', line=dict(color='rgb(77, 163, 126)'), visible='legendonly'))
-    #second_diff120 = second_order_difference(moving_average_end_at_current(price, 120), 120)
-    second_diff120 = second_order_difference(stock_data["Close"][ticker_list_id].rolling(window=mov_av_graph3_id).mean(), 120)
-    fig2.add_trace(go.Scatter(x = x, y=second_diff120, mode='lines', name='2 hours', line=dict(color='black'), visible='legendonly'))
+    fig2.add_trace(go.Scatter(x = x, y=second_diff60, mode='lines', name='1 hour', line=dict(color='black'), visible='legendonly'))
     fig2.add_hline(y = 0, line_width=3, line_color="rgba(101, 110, 242, 0.5)")
     
     fig2.update_layout( title = ticker_list_id, xaxis_title='Time', yaxis_title='Rate of Change', legend_title='Time Periods', template='plotly', width=graph_width, height=450, 
@@ -410,16 +414,12 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     return fig1mini, fig2mini, fig3mini, fig4mini, fig1, fig2, fig3
     
 
+
+# In[37]:
+
+
 if __name__ == '__main__':
     app.run()
-
-
-
-
-
-
-
-
 
 
 
