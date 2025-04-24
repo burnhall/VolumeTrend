@@ -1,5 +1,8 @@
 #server = app.server
 
+#!/usr/bin/env python
+# coding: utf-8
+
 # In[1]:
 
 
@@ -234,7 +237,6 @@ list_of_tickers_3 = ["^VIX", "QQQ", "Movers", "Chip", "EV", "Ecom", "Crypto", "S
 
 app = Dash()
 server = app.server
-
 app.layout = html.Div([
     html.H1('Stock Analysis Board', style={'textAlign': 'center', 'color': '#2c3e50', 'margin-bottom': '30px'}),
     
@@ -421,6 +423,14 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
 if __name__ == '__main__':
     app.run()
 
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
 
 
 
