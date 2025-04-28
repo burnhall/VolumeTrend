@@ -3,7 +3,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[115]:
+# In[1]:
 
 
 from dash import Dash, html, dcc, callback, Output, Input
@@ -22,7 +22,7 @@ import datetime
 import yfinance as yf
 
 
-# In[117]:
+# In[2]:
 
 
 def get_minute_stock_data(ticker, time_duration):
@@ -222,7 +222,7 @@ def get_list_of_tickers_from_keyword(list_of_tickers, keyword):
         list_of_tickers.append(keyword)
 
 
-# In[119]:
+# In[318]:
 
 
 list_of_tickers = ["^VIX", "QQQ", "SPY", "RIVN", "HUT", "SMCI", "GOOG", "SNAP", "AMD", "TSLA", "NVDA", "AAPL", "ARM", "PLTR", "AMZN", "SHOP", "NKE", "IONQ", 
@@ -256,7 +256,7 @@ app.layout = html.Div([
             dcc.Slider( id='mov-av-graph3-id', min=5, max=50, step=1, marks={i: str(i) for i in range(5, 51, 5)}, value=10 ),
             html.Button('Refresh Graph', id='refresh-button-id', style={"width": "100%", "height":"20px", "color":"green"})
         ], style={'width': '50%', 'padding': '20px', 'background-color': '#f8f9fa', 'border-radius': '10px', 'margin-right': '20px'}),
-    ], style={'display': 'flex', 'margin': '20px'}),
+    ], style={'display': 'flex', 'margin': '20px', 'position':'sticky','top':0, 'zIndex': 999999}),
 
     html.Div([
         dcc.Graph(id='graph-mini1-id', style={'padding': '0px', 'margin':'0px'}),            
@@ -275,6 +275,10 @@ app.layout = html.Div([
     ], style={'width':'100%', 'padding': '0px', 'margin':'0px', 'gap': '0px'})
 
 ], style={'padding': '0px'})
+
+
+# In[320]:
+
 
 @callback(
     [Output('graph-mini1-id', 'figure'),
@@ -372,26 +376,21 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     # ------- FIGURE 22222222222222222222222222222222222222222222222222222222222222222222
     stock_data_ha = get_heiken_ashi(stock_data, ticker_list_id)
     fig2 = go.Figure()
-    #second_diff10 = second_order_difference(stock_data["Close"][ticker_list_id].rolling(window=mov_av_graph3_id).mean(), 10)
     second_diff1 = second_order_difference(stock_data_ha["Close"].rolling(window=mov_av_graph3_id).mean(), 1)
     fig2.add_trace(go.Scatter(x = x, y=second_diff1, mode='lines', name='1 minute', line=dict(color='orange')))
-    #second_diff15 = second_order_difference(stock_data["Close"][ticker_list_id].rolling(window=mov_av_graph3_id).mean(), 15)
     second_diff2 = second_order_difference(stock_data_ha["Close"].rolling(window=mov_av_graph3_id).mean(), 2)
     fig2.add_trace(go.Scatter(x = x, y=second_diff2, mode='lines', name='2 minutes', line=dict(color='red')))
-    #second_diff30 = second_order_difference(stock_data["Close"][ticker_list_id].rolling(window=mov_av_graph3_id).mean(), 30)
     second_diff3 = second_order_difference(stock_data_ha["Close"].rolling(window=mov_av_graph3_id).mean(), 3)
     fig2.add_trace(go.Scatter(x = x, y=second_diff3, mode='lines', name='3 minutes', line=dict(color='rgb(77, 163, 126)')))
-    #second_diff60 = second_order_difference(stock_data["Close"][ticker_list_id].rolling(window=mov_av_graph3_id).mean(), 60)
     second_diff5 = second_order_difference(stock_data_ha["Open"].rolling(window=mov_av_graph3_id).mean(), 5)
-    fig2.add_trace(go.Scatter(x = x, y=second_diff5, mode='lines', name='5 minutes', line=dict(color='black')))
-    #second_diff120 = second_order_difference(stock_data["Close"][ticker_list_id].rolling(window=mov_av_graph3_id).mean(), 120)
+    fig2.add_trace(go.Scatter(x = x, y=second_diff5, mode='lines', name='5 minutes', line=dict(color='light blue')))
     second_diff15 = second_order_difference(stock_data_ha["Close"].rolling(window=mov_av_graph3_id).mean(), 15)
     fig2.add_trace(go.Scatter(x = x, y=second_diff15, mode='lines', name='15 minutes', line=dict(color='black'), visible='legendonly'))
     fig2.add_hline(y = 0, line_width=3, line_color="rgba(101, 110, 242, 0.5)")
     
     fig2.update_layout( title = ticker_list_id, xaxis_title='Time', yaxis_title='Rate of Change', legend_title='Time Periods', template='plotly', width=graph_width, height=450, 
-                        xaxis=dict(tickvals = custom_tick_vals, ticktext = custom_tick_text,tickangle=-90))
-    
+                       xaxis_range=[max(x)-200, max(x) + 20], yaxis_range=[min(second_diff5[-200:-1]), max(second_diff5[-200:-1])], xaxis=dict(tickvals = custom_tick_vals, ticktext = custom_tick_text, tickangle=-90))
+    #yaxis_range=[0, 6]
     # ------- FIGURE 333333333333333333333333333333333333333333333333333333333333333333333
     fig3 = go.Figure()
     
@@ -420,6 +419,22 @@ def update_graph(ticker_list_id, time_duration, check_list_id, ticker_list_id_3,
     return fig1mini, fig2mini, fig3mini, fig4mini, fig1, fig2, fig3
     
 
+
+# In[322]:
+
+
 if __name__ == '__main__':
     app.run()
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
 
